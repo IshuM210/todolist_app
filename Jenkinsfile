@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKERHUB_USER = "ishwaryamallesh"   // Your Docker Hub username
-        IMAGE_NAME = "todo-list-app"              // Image name
+        IMAGE_NAME = "todo-list-app"
     }
 
     stages {
@@ -21,14 +21,19 @@ pipeline {
                 """
             }
         }
+
         stage('Docker Hub Login') {
-        steps {
-            withCredentials([usernamePassword(credentialsId: 'dockerhub', 
-                                         usernameVariable: 'DOCKERHUB_USER', 
-                                         passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                sh 'echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USER --password-stdin'
-        }
-             }
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DH_USER',
+                        passwordVariable: 'DH_PASS'
+                    )
+                ]) {
+                    sh 'echo $DH_PASS | docker login -u $DH_USER --password-stdin'
+                }
+            }
         }
 
         stage('Push to Docker Hub') {
@@ -41,14 +46,16 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sh """
-                ssh -o StrictHostKeyChecking=no ubuntu@3.110.33.101 '
-                    docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest
-                    docker stop todoapp || true
-                    docker rm todoapp || true
-                    docker run -d -p 7000:5000 --name todoapp $DOCKERHUB_USER/$IMAGE_NAME:latest
-                '
-                """
+                sshagent(['EC2_SSH_KEY']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@3.110.33.101 "
+                        docker pull ishwaryamallesh/todo-list-app:latest &&
+                        docker stop todoapp || true &&
+                        docker rm todoapp || true &&
+                        docker run -d -p 7000:5000 --name todoapp ishwaryamallesh/todo-list-app:latest
+                    "
+                    '''
+                }
             }
         }
     }
