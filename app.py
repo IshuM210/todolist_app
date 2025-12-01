@@ -14,7 +14,7 @@ def add_task():
     if task:
         tasks.append(task)
     return redirect('/')
-
+    
 @app.route('/delete/<int:task_id>')
 def delete_task(task_id):
     tasks.pop(task_id)
