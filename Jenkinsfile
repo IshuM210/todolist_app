@@ -1,36 +1,53 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKERHUB_USER = "ishwaryamallesh"   // Your Docker Hub username
+        IMAGE_NAME = "todo-list-app"              // Image name
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Docker Image') {
             steps {
-                sh 'pip install -r requirements.txt'
+                sh """
+                docker build -t $DOCKERHUB_USER/$IMAGE_NAME:latest .
+                """
             }
         }
 
-        stage('Run Tests') {
+        stage('Docker Hub Login') {
             steps {
-                sh 'pytest || true'
+                sh """
+                echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USER --password-stdin
+                """
             }
         }
 
-        stage('Build') {
+        stage('Push to Docker Hub') {
             steps {
-                echo 'No build step for Python, skipping...'
+                sh """
+                docker push $DOCKERHUB_USER/$IMAGE_NAME:latest
+                """
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to EC2') {
             steps {
-                echo 'Deploying Python application...'
-                // Example command below (modify for your server)
-                sh 'nohup python app.py &'
+                sh """
+                ssh -o StrictHostKeyChecking=no ubuntu@3.110.33.101 '
+                    docker pull $DOCKERHUB_USER/$IMAGE_NAME:latest
+                    docker stop todoapp || true
+                    docker rm todoapp || true
+                    docker run -d -p 7000:5000 --name todoapp $DOCKERHUB_USER/$IMAGE_NAME:latest
+                '
+                """
             }
         }
     }
