@@ -48,7 +48,7 @@ pipeline {
             steps {
                 sshagent(['EC2_SSH_KEY']) {
                     sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@65.0.72.231 "
+                    ssh -o StrictHostKeyChecking=no ubuntu@65.2.33.71 "
                         docker pull ishwaryamallesh/todo-list-app:latest &&
                         docker stop todoapp || true &&
                         docker rm todoapp || true &&
